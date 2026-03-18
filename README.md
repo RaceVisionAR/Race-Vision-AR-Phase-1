@@ -1,17 +1,18 @@
 # BibDetector
 
-BibDetector is a SwiftUI + ARKit prototype that detects race bib numbers from live camera frames, stabilizes OCR results over time, and overlays the matched runner name directly on top of the bib in the camera view.
+BibDetector is a SwiftUI + ARKit prototype that detects race bib numbers from live camera frames, stabilizes OCR results over time, and overlays matched runner cards directly on top of each detected bib in the camera view.
 
-The app is designed as a lightweight MVP focused on real-time detection flow, actor-safe concurrency, and a clean separation between UI, frame processing, OCR, parsing, and runner lookup.
+The app is designed as a lightweight MVP focused on real-time detection flow, actor-safe concurrency, and a clean separation between UI, frame processing, OCR, parsing, multi-track state, and runner lookup.
 
 ## What The App Does
 
 - Streams live frames from ARKit.
 - Runs OCR on each sampled frame using Apple Vision text recognition.
 - Extracts bib candidates (digits only, 2 to 5 characters).
-- Stabilizes noisy frame-by-frame OCR results with a short time-window voting strategy.
+- Emits multiple valid bib detections per frame, deduplicated by normalized bib number.
+- Stabilizes noisy frame-by-frame OCR results with a per-bib short time-window hit strategy.
 - Matches stabilized bib numbers against local runner data.
-- Draws a bounding box and runner label overlay in real time.
+- Draws one bounding box and runner card per visible bib in real time.
 
 ## Tech Stack
 
@@ -33,15 +34,17 @@ The app is designed as a lightweight MVP focused on real-time detection flow, ac
   - Forwards each frame to the app model on `@MainActor`.
 - `BibDetector/AppModel.swift`
   - Main state machine and orchestration layer.
-  - Throttles OCR, tracks detection history, stabilizes results, maps coordinates, updates UI state.
+  - Throttles OCR, maintains per-bib track state, stabilizes results, manages lifecycle, maps coordinates, updates UI state.
 - `BibDetector/Services/BibOCRService.swift`
-  - `actor` that performs Vision OCR and returns best candidate + confidence + bounding box.
+  - `actor` that performs Vision OCR and returns deduplicated bib candidates for the current frame.
 - `BibDetector/Services/BibParser.swift`
   - Pure parsing helpers for bib normalization and variant generation.
 - `BibDetector/Services/RunnerRepository.swift`
   - Loads runner records from `runners.json` and resolves bib to profile.
 - `BibDetector/Models/BibDetection.swift`
   - Detection model (bib, confidence, bounding box, timestamp).
+- `BibDetector/Models/TrackedRunnerOverlay.swift`
+  - Per-bib overlay track model, including lifecycle state, detection history, matched runner, and screen-space rect.
 - `BibDetector/Models/RunnerProfile.swift`
   - Runner model and display name logic.
 - `BibDetector/Resources/runners.json`
@@ -84,23 +87,22 @@ The app is designed as a lightweight MVP focused on real-time detection flow, ac
 
 - OCR observations are reduced to top text candidates.
 - `BibParser.normalizedBibCandidate` strips non-digits and only accepts length 2 to 5.
-- Highest-confidence candidate in that frame becomes `OCRBibResult`.
+- Highest-confidence observation for each normalized bib becomes an `OCRBibResult`.
 
-7. Temporal stabilization
+7. Multi-track stabilization
 
-- `AppModel` stores short-lived detection history.
-- Stale entries are removed (`staleDetectionTTL = 1.2s`).
-- Detections are grouped by bib number; strongest group wins.
-- Tie-breaker uses sum of confidence; then best confidence in winning group is selected.
+- `AppModel` maintains a bib-keyed track store.
+- Each track keeps a short-lived detection history (`stabilizationWindow = 0.8s`).
+- A card becomes visible after `consistentDetectionsRequired = 3` hits for the same bib.
+- Visible tracks are held when temporarily lost (`visibleGracePeriod = 1.0s`), then faded and removed (`fadeOutDuration = 0.35s`).
+- OCR noise is constrained with `minimumTrackConfidence = 0.35` and `maxTrackedCards = 4`.
 
 8. Runner matching and overlay
 
 - `RunnerRepository.matchRunner` tries bib variants (including leading-zero normalization).
-- Vision normalized bounding box is converted to view coordinates.
-- UI updates:
-  - green rectangle over the bib
-  - label with nickname/name
-  - debug status text
+- Each stabilized track resolves its runner profile once and keeps it for the life of that track.
+- Vision normalized bounding boxes are converted to view coordinates per track.
+- UI updates with one card per visible bib plus tracked-count debug status.
 
 ## Concurrency Model
 
@@ -114,7 +116,8 @@ This architecture avoids actor isolation warnings while keeping frame flow respo
 ## Data Model Notes
 
 - `OCRBibResult`: per-frame OCR output used internally by app model.
-- `BibDetection`: stabilized candidate with timestamp and geometry.
+- `BibDetection`: per-frame detection with timestamp and geometry.
+- `TrackedRunnerOverlay`: per-bib track with visibility state, confidence history, and screen-space overlay rect.
 - `RunnerProfile`: local profile keyed by bib number; display name prefers nickname.
 
 ## Running The App
@@ -152,6 +155,8 @@ Current tests include:
 
 - Bib parser normalization behavior
 - Runner repository matching with leading-zero fallback
+- Track promotion / grace-period / fade lifecycle behavior
+- Confidence floor and maximum-card capping behavior
 - Basic UI launch tests
 
 ## Current Limitations
@@ -159,7 +164,7 @@ Current tests include:
 - OCR is configured for speed (`.fast`), which can reduce accuracy at distance or motion blur.
 - Bib extraction assumes numeric bibs with 2 to 5 digits.
 - Runner dataset is local static JSON (no remote sync).
-- Overlay tracks OCR bounding box only; no advanced object tracking across frames.
+- Overlay remains screen-space only; it does not use 3D anchors or long-term person re-identification.
 - Real-world performance depends on lighting, bib typography, and camera stability.
 
 ## Tuning Knobs
@@ -167,7 +172,12 @@ Current tests include:
 In `AppModel`:
 
 - `ocrInterval` (default `0.2`): lower for faster updates, higher for less CPU usage.
-- `staleDetectionTTL` (default `1.2`): lower for quicker turnover, higher for more stability.
+- `stabilizationWindow` (default `0.8`): larger window tolerates more OCR jitter before a track is discarded.
+- `consistentDetectionsRequired` (default `3`): lower values show cards sooner, higher values reduce false positives.
+- `visibleGracePeriod` (default `1.0`): how long a visible card stays fully shown after a miss.
+- `fadeOutDuration` (default `0.35`): how long a stale visible card remains in the fade-out state before removal.
+- `minimumTrackConfidence` (default `0.35`): floor for accepting per-frame OCR results into the track store.
+- `maxTrackedCards` (default `4`): upper bound on simultaneously tracked overlays.
 
 In `BibOCRService`:
 
@@ -175,8 +185,7 @@ In `BibOCRService`:
 
 ## Future Improvements
 
-- Add confidence threshold before accepting detections.
-- Use multi-frame tracking to smooth overlay movement.
+- Improve per-person motion smoothing beyond OCR bounding-box updates.
 - Add support for alphanumeric bib formats.
 - Introduce remote runner directory and caching.
 - Add benchmark metrics (frame rate, OCR latency, false positives).

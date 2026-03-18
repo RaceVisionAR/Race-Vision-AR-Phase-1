@@ -9,7 +9,7 @@ struct OCRBibResult {
 }
 
 actor BibOCRService {
-    func detectBib(in pixelBuffer: CVPixelBuffer) async -> OCRBibResult? {
+    func detectBibs(in pixelBuffer: CVPixelBuffer) async -> [OCRBibResult] {
         let request = VNRecognizeTextRequest()
         request.recognitionLanguages = ["en_US"]
         request.recognitionLevel = .fast
@@ -20,16 +20,17 @@ actor BibOCRService {
             try handler.perform([request])
 
             guard let observations = request.results else {
-                return nil
+                return []
             }
 
-            return bestResult(from: observations)
+            return bestResults(from: observations)
         } catch {
-            return nil
+            return []
         }
     }
-    private func bestResult(from observations: [VNRecognizedTextObservation]) -> OCRBibResult? {
-        var best: OCRBibResult?
+
+    private func bestResults(from observations: [VNRecognizedTextObservation]) -> [OCRBibResult] {
+        var resultsByBib: [String: OCRBibResult] = [:]
 
         for observation in observations {
             guard let topCandidate = observation.topCandidates(1).first,
@@ -43,15 +44,17 @@ actor BibOCRService {
                 boundingBox: observation.boundingBox
             )
 
-            if let currentBest = best {
+            if let currentBest = resultsByBib[bib] {
                 if candidate.confidence > currentBest.confidence {
-                    best = candidate
+                    resultsByBib[bib] = candidate
                 }
             } else {
-                best = candidate
+                resultsByBib[bib] = candidate
             }
         }
 
-        return best
+        return resultsByBib.values.sorted { lhs, rhs in
+            lhs.confidence > rhs.confidence
+        }
     }
 }

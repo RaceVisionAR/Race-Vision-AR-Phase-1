@@ -8,9 +8,7 @@ import Foundation
 final class AppModel: ObservableObject {
     @Published var cameraAuthorizationStatus: AVAuthorizationStatus = AVCaptureDevice.authorizationStatus(for: .video)
     @Published var isARSupported: Bool = ARWorldTrackingConfiguration.isSupported
-    @Published var latestDetection: BibDetection?
-    @Published var matchedRunner: RunnerProfile?
-    @Published var overlayRect: CGRect?
+    @Published var trackedOverlays: [String: TrackedRunnerOverlay] = [:]
     @Published var debugStatus: String = "Initializing"
 
     private let repository: RunnerRepository
@@ -18,13 +16,30 @@ final class AppModel: ObservableObject {
 
     private var isProcessingFrame = false
     private var lastOCRTime = Date.distantPast
-    private var detectionHistory: [BibDetection] = []
+    private var recentStabilizedBibs: [String] = []
 
     private let ocrInterval: TimeInterval = 0.2
-    private let staleDetectionTTL: TimeInterval = 1.2
+    private let stabilizationWindow: TimeInterval = 0.8
+    private let visibleGracePeriod: TimeInterval = 1.0
+    private let fadeOutDuration: TimeInterval = 0.35
+    private let consistentDetectionsRequired: Int = 3
+    private let minimumTrackConfidence: Float = 0.35
+    private let maxTrackedCards: Int = 4
 
-    init(ocrService: BibOCRService = BibOCRService()) {
-        self.repository = RunnerRepository()
+    var visibleTracks: [TrackedRunnerOverlay] {
+        trackedOverlays.values
+            .filter(\.isRenderable)
+            .sorted { lhs, rhs in
+                if lhs.visibilityStatus != rhs.visibilityStatus {
+                    return lhs.visibilityStatus == .visible
+                }
+
+                return lhs.lastSeenAt > rhs.lastSeenAt
+            }
+    }
+
+    init(repository: RunnerRepository = RunnerRepository(), ocrService: BibOCRService = BibOCRService()) {
+        self.repository = repository
         self.ocrService = ocrService
     }
 
@@ -49,7 +64,7 @@ final class AppModel: ObservableObject {
     }
 
     func processFrame(_ frame: ARFrame, viewSize: CGSize) {
-        clearStaleDetections()
+        refreshTrackLifecycle(viewSize: viewSize, now: Date())
 
         guard isARSupported else {
             debugStatus = "AR is not supported on this device"
@@ -78,77 +93,152 @@ final class AppModel: ObservableObject {
                 isProcessingFrame = false
             }
 
-            let detected = await ocrService.detectBib(in: pixelBuffer)
-            handleOCRResult(detected, viewSize: viewSize)
+            let detected = await ocrService.detectBibs(in: pixelBuffer)
+            ingestOCRResults(detected, viewSize: viewSize, now: Date())
         }
     }
 
-    private func handleOCRResult(_ result: OCRBibResult?, viewSize: CGSize) {
-        guard let result else {
-            debugStatus = "Scanning for bib numbers"
-            return
+    func ingestOCRResults(_ results: [OCRBibResult], viewSize: CGSize, now: Date = Date()) {
+        let prioritizedResults = Array(
+            results
+                .filter { $0.confidence >= minimumTrackConfidence }
+                .sorted { $0.confidence > $1.confidence }
+                .prefix(maxTrackedCards)
+        )
+
+        var detectedBibs = Set<String>()
+        for result in prioritizedResults {
+            upsertTrack(for: result, viewSize: viewSize, now: now)
+            detectedBibs.insert(result.bibNumber)
         }
 
+        refreshTrackLifecycle(viewSize: viewSize, now: now, detectedBibs: detectedBibs)
+    }
+
+    private func upsertTrack(for result: OCRBibResult, viewSize: CGSize, now: Date) {
         let detection = BibDetection(
             bibNumber: result.bibNumber,
             confidence: result.confidence,
             boundingBox: result.boundingBox,
-            timestamp: Date()
+            timestamp: now
         )
 
-        detectionHistory.append(detection)
-        detectionHistory = detectionHistory.filter {
-            Date().timeIntervalSince($0.timestamp) <= staleDetectionTTL
-        }
+        let overlayRect = convertVisionRectToView(result.boundingBox, viewSize: viewSize)
 
-        guard let stabilized = stabilizedDetection() else {
+        if var track = trackedOverlays[result.bibNumber] {
+            track.latestDetection = detection
+            track.overlayRect = overlayRect
+            track.lastSeenAt = now
+            track.recentDetections.append(detection)
+            track.recentDetections = track.recentDetections.filter {
+                now.timeIntervalSince($0.timestamp) <= stabilizationWindow
+            }
+
+            let justStabilized = !track.hasMetVisibilityThreshold &&
+                track.recentDetections.count >= consistentDetectionsRequired
+
+            if justStabilized {
+                track.hasMetVisibilityThreshold = true
+                track.runnerProfile = repository.matchRunner(bibNumber: track.bibNumber)
+                registerStabilizedBib(track.bibNumber)
+            }
+
+            if track.hasMetVisibilityThreshold {
+                track.visibilityStatus = .visible
+            }
+
+            trackedOverlays[result.bibNumber] = track
             return
         }
 
-        latestDetection = stabilized
-        matchedRunner = repository.matchRunner(bibNumber: stabilized.bibNumber)
-        overlayRect = convertVisionRectToView(stabilized.boundingBox, viewSize: viewSize)
-
-        if let matchedRunner {
-            debugStatus = "Bib \(stabilized.bibNumber) -> \(matchedRunner.displayName)"
-        } else {
-            debugStatus = "Bib \(stabilized.bibNumber) not found"
-        }
+        trackedOverlays[result.bibNumber] = TrackedRunnerOverlay(
+            bibNumber: result.bibNumber,
+            runnerProfile: nil,
+            latestDetection: detection,
+            overlayRect: overlayRect,
+            visibilityStatus: .probing,
+            recentDetections: [detection],
+            firstSeenAt: now,
+            lastSeenAt: now,
+            hasMetVisibilityThreshold: false
+        )
     }
 
-    private func stabilizedDetection() -> BibDetection? {
-        guard !detectionHistory.isEmpty else {
-            return nil
-        }
+    private func refreshTrackLifecycle(viewSize: CGSize, now: Date, detectedBibs: Set<String> = []) {
+        var nextTracks = trackedOverlays
 
-        let grouped = Dictionary(grouping: detectionHistory, by: { $0.bibNumber })
-        let bestGroup = grouped.max {
-            if $0.value.count == $1.value.count {
-                let lhsConfidence = $0.value.map(\.confidence).reduce(0, +)
-                let rhsConfidence = $1.value.map(\.confidence).reduce(0, +)
-                return lhsConfidence < rhsConfidence
+        for bibNumber in Array(nextTracks.keys) {
+            guard var track = nextTracks[bibNumber] else {
+                continue
             }
-            return $0.value.count < $1.value.count
+
+            track.recentDetections = track.recentDetections.filter {
+                now.timeIntervalSince($0.timestamp) <= stabilizationWindow
+            }
+            track.overlayRect = convertVisionRectToView(track.latestBoundingBox, viewSize: viewSize)
+
+            if detectedBibs.contains(bibNumber) {
+                if track.hasMetVisibilityThreshold {
+                    track.visibilityStatus = .visible
+                }
+                nextTracks[bibNumber] = track
+                continue
+            }
+
+            let timeSinceLastSeen = now.timeIntervalSince(track.lastSeenAt)
+
+            if track.hasMetVisibilityThreshold {
+                if timeSinceLastSeen > visibleGracePeriod + fadeOutDuration {
+                    nextTracks.removeValue(forKey: bibNumber)
+                    continue
+                }
+
+                track.visibilityStatus = timeSinceLastSeen > visibleGracePeriod ? .fading : .visible
+                nextTracks[bibNumber] = track
+                continue
+            }
+
+            if timeSinceLastSeen > stabilizationWindow {
+                nextTracks.removeValue(forKey: bibNumber)
+                continue
+            }
+
+            nextTracks[bibNumber] = track
         }
 
-        guard let detections = bestGroup?.value else {
-            return nil
-        }
-
-        return detections.max(by: { $0.confidence < $1.confidence })
+        trackedOverlays = nextTracks
+        updateDebugStatus()
     }
 
-    private func clearStaleDetections() {
-        let now = Date()
-        detectionHistory = detectionHistory.filter {
-            now.timeIntervalSince($0.timestamp) <= staleDetectionTTL
+    private func registerStabilizedBib(_ bibNumber: String) {
+        recentStabilizedBibs.removeAll { $0 == bibNumber }
+        recentStabilizedBibs.insert(bibNumber, at: 0)
+        recentStabilizedBibs = Array(recentStabilizedBibs.prefix(3))
+    }
+
+    private func updateDebugStatus() {
+        let visible = visibleTracks
+        let probing = trackedOverlays.values
+            .filter { $0.visibilityStatus == .probing }
+            .sorted { $0.firstSeenAt < $1.firstSeenAt }
+
+        var segments: [String] = []
+
+        if !visible.isEmpty {
+            let trackedLabels = visible.map(\.bibNumber).sorted().joined(separator: ", ")
+            segments.append("Tracking \(visible.count) bib(s): \(trackedLabels)")
+        } else if !probing.isEmpty {
+            let probingLabels = probing.map(\.bibNumber).joined(separator: ", ")
+            segments.append("Stabilizing \(probing.count) bib(s): \(probingLabels)")
+        } else {
+            segments.append("Scanning for bib numbers")
         }
 
-        if detectionHistory.isEmpty {
-            latestDetection = nil
-            matchedRunner = nil
-            overlayRect = nil
+        if !recentStabilizedBibs.isEmpty {
+            segments.append("Recent: \(recentStabilizedBibs.joined(separator: ", "))")
         }
+
+        debugStatus = segments.joined(separator: " • ")
     }
 
     private func convertVisionRectToView(_ normalizedRect: CGRect, viewSize: CGSize) -> CGRect {

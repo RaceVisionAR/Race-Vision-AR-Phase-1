@@ -62,27 +62,13 @@ struct ContentView: View {
     private var overlayView: some View {
         GeometryReader { geometry in
             ZStack(alignment: .topLeading) {
-                if let rect = appModel.overlayRect {
-                    let displayName = appModel.matchedRunner?.displayName ?? "Bib \(appModel.latestDetection?.bibNumber ?? "")"
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.green, lineWidth: 2)
-                        .frame(width: rect.width, height: rect.height)
-                        .position(x: rect.midX, y: rect.midY)
-
-                    Text(displayName)
-                        .font(.caption.bold())
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(.black.opacity(0.75), in: Capsule())
-                        .foregroundStyle(.white)
-                        .position(
-                            x: clamp(rect.midX, min: 70, max: geometry.size.width - 70),
-                            y: max(20, rect.minY - 18)
-                        )
+                ForEach(appModel.visibleTracks) { track in
+                    overlayCard(for: track, in: geometry.size)
+                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("BibDetector MVP")
+                    Text("BibDetector Multi-Runner")
                         .font(.headline)
                     Text(appModel.debugStatus)
                         .font(.caption)
@@ -93,7 +79,37 @@ struct ContentView: View {
                 .padding(.top, 12)
                 .padding(.leading, 12)
             }
+            .animation(.easeInOut(duration: 0.25), value: appModel.trackedOverlays)
         }
+    }
+
+    @ViewBuilder
+    private func overlayCard(for track: TrackedRunnerOverlay, in viewSize: CGSize) -> some View {
+        let rect = track.overlayRect
+        let accentColor: Color = track.runnerProfile == nil ? .yellow : .green
+
+        RoundedRectangle(cornerRadius: 8)
+            .stroke(accentColor, lineWidth: 2)
+            .frame(width: rect.width, height: rect.height)
+            .opacity(track.overlayOpacity)
+            .position(x: rect.midX, y: rect.midY)
+
+        VStack(alignment: .leading, spacing: 2) {
+            Text(track.displayName)
+                .font(.caption.bold())
+            Text("Bib \(track.bibNumber)")
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.75))
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(.black.opacity(0.78), in: Capsule())
+        .foregroundStyle(.white)
+        .opacity(track.overlayOpacity)
+        .position(
+            x: clamp(rect.midX, min: 88, max: viewSize.width - 88),
+            y: max(24, rect.minY - 22)
+        )
     }
 
     private func clamp(_ value: CGFloat, min minimum: CGFloat, max maximum: CGFloat) -> CGFloat {
