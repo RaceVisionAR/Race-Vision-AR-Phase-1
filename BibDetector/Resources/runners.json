@@ -2,51 +2,71 @@
   {
     "bibNumber": "101",
     "name": "Jordan Alvarez",
-    "nickname": "Jordy"
+    "nickname": "Jordy",
+    "team": "City Striders",
+    "category": "Half Marathon"
   },
   {
     "bibNumber": "202",
     "name": "Samantha Lee",
-    "nickname": "Sam"
+    "nickname": "Sam",
+    "team": "Eastside Pacers",
+    "category": "5K"
   },
   {
     "bibNumber": "317",
     "name": "Michael Thompson",
-    "nickname": "Mike"
+    "nickname": "Mike",
+    "team": "Unattached",
+    "category": "Full Marathon"
   },
   {
     "bibNumber": "450",
     "name": "Priya Patel",
-    "nickname": "Pri"
+    "nickname": "Pri",
+    "team": "Run Club SF",
+    "category": "10K"
   },
   {
     "bibNumber": "512",
     "name": "Carlos Mendoza",
-    "nickname": "Carlo"
+    "nickname": "Carlo",
+    "team": "Westside Runners",
+    "category": "Half Marathon"
   },
   {
     "bibNumber": "634",
     "name": "Aisha Johnson",
-    "nickname": "AJ"
+    "nickname": "AJ",
+    "team": "Track & Field AC",
+    "category": "5K"
   },
   {
     "bibNumber": "728",
     "name": "Liam O'Brien",
-    "nickname": "Liam"
+    "nickname": "Liam",
+    "team": "Dublin Harriers",
+    "category": "Full Marathon"
   },
   {
     "bibNumber": "815",
     "name": "Yuna Kim",
-    "nickname": "Yuna"
+    "nickname": "Yuna",
+    "team": "Seoul Runners",
+    "category": "10K"
   },
   {
     "bibNumber": "903",
     "name": "Derek Foster",
-    "nickname": "Dex"
+    "nickname": "Dex",
+    "team": "Unattached",
+    "category": "Half Marathon"
   },
   {
     "bibNumber": "999",
     "name": "Elena Russo",
-    "nickname": "Elle"
+    "nickname": "Elle",
+    "team": "Milano Athletics",
+    "category": "Full Marathon"
   }
 ]

@@ -103,13 +103,27 @@ struct ContentView: View {
                         .font(.caption2)
                         .foregroundStyle(.white.opacity(0.85))
                 }
+                HStack(spacing: 6) {
+                    Text("# \(track.bibNumber)")
+                    if let category = profile.category {
+                        Text("·")
+                        Text(category)
+                    }
+                }
+                .font(.caption2)
+                .foregroundStyle(accentColor.opacity(0.9))
+                if let team = profile.team {
+                    Text(team)
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.6))
+                }
             } else {
                 Text("Bib \(track.bibNumber)")
                     .font(.caption.bold())
+                Text("# \(track.bibNumber)")
+                    .font(.caption2)
+                    .foregroundStyle(accentColor.opacity(0.9))
             }
-            Text("# \(track.bibNumber)")
-                .font(.caption2)
-                .foregroundStyle(accentColor.opacity(0.9))
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
