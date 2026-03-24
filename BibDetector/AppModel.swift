@@ -180,6 +180,7 @@ final class AppModel: ObservableObject {
             if detectedBibs.contains(bibNumber) {
                 if track.hasMetVisibilityThreshold {
                     track.visibilityStatus = .visible
+                    track.overlayOpacity = 1.0
                 }
                 nextTracks[bibNumber] = track
                 continue
@@ -193,7 +194,14 @@ final class AppModel: ObservableObject {
                     continue
                 }
 
-                track.visibilityStatus = timeSinceLastSeen > visibleGracePeriod ? .fading : .visible
+                if timeSinceLastSeen > visibleGracePeriod {
+                    track.visibilityStatus = .fading
+                    let fadeProgress = (timeSinceLastSeen - visibleGracePeriod) / fadeOutDuration
+                    track.overlayOpacity = max(0.0, 1.0 - fadeProgress)
+                } else {
+                    track.visibilityStatus = .visible
+                    track.overlayOpacity = 1.0
+                }
                 nextTracks[bibNumber] = track
                 continue
             }

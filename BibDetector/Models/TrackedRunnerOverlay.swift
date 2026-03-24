@@ -36,7 +36,5 @@ struct TrackedRunnerOverlay: Identifiable, Equatable {
         visibilityStatus == .visible || visibilityStatus == .fading
     }
 
-    var overlayOpacity: Double {
-        visibilityStatus == .fading ? 0.0 : 1.0
-    }
+    var overlayOpacity: Double = 1.0
 }
