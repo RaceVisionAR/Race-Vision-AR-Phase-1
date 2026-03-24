@@ -94,16 +94,26 @@ struct ContentView: View {
             .opacity(track.overlayOpacity)
             .position(x: rect.midX, y: rect.midY)
 
-        VStack(alignment: .leading, spacing: 2) {
-            Text(track.displayName)
-                .font(.caption.bold())
-            Text("Bib \(track.bibNumber)")
+        VStack(alignment: .leading, spacing: 3) {
+            if let profile = track.runnerProfile {
+                Text(profile.name)
+                    .font(.caption.bold())
+                if let nickname = profile.nickname, !nickname.isEmpty, nickname != profile.name {
+                    Text("\"\(nickname)\"")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+            } else {
+                Text("Bib \(track.bibNumber)")
+                    .font(.caption.bold())
+            }
+            Text("# \(track.bibNumber)")
                 .font(.caption2)
-                .foregroundStyle(.white.opacity(0.75))
+                .foregroundStyle(accentColor.opacity(0.9))
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
-        .background(.black.opacity(0.78), in: Capsule())
+        .background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 8))
         .foregroundStyle(.white)
         .opacity(track.overlayOpacity)
         .position(
