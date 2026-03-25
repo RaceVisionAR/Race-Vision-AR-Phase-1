@@ -65,6 +65,8 @@ struct ContentView: View {
                 ForEach(appModel.visibleTracks) { track in
                     overlayCard(for: track, in: geometry.size)
                         .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                        .ignoresSafeArea()
+
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -87,7 +89,7 @@ struct ContentView: View {
     private func overlayCard(for track: TrackedRunnerOverlay, in viewSize: CGSize) -> some View {
         let rect = track.overlayRect
         let accentColor: Color = track.runnerProfile == nil ? .yellow : .green
-
+        
         VStack(alignment: .leading, spacing: 3) {
             if let profile = track.runnerProfile {
                 Text(profile.name)
@@ -126,7 +128,7 @@ struct ContentView: View {
         .opacity(track.overlayOpacity)
         .position(
             x: clamp(rect.midX, min: 88, max: viewSize.width - 88),
-            y: max(24, rect.minY - 22)
+            y: max(24, rect.minY - 50)
         )
     }
 
