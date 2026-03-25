@@ -30,6 +30,9 @@ final class AppModel: ObservableObject {
     var visibleTracks: [TrackedRunnerOverlay] {
         trackedOverlays.values
             .filter(\.isRenderable)
+            .filter({ overlay in
+                return overlay.runnerProfile != nil
+            })
             .sorted { lhs, rhs in
                 if lhs.visibilityStatus != rhs.visibilityStatus {
                     return lhs.visibilityStatus == .visible
