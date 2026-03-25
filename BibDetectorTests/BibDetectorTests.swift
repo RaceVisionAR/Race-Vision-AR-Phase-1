@@ -65,13 +65,17 @@ struct BibDetectorTests {
 
         #expect(appModel.visibleTracks.count == 1)
         #expect(appModel.trackedOverlays["101"]?.visibilityStatus == .visible)
+        #expect(appModel.trackedOverlays["101"]?.overlayOpacity == 1.0)
         #expect(appModel.trackedOverlays["101"]?.runnerProfile?.displayName == "Jordy")
 
         appModel.ingestOCRResults([], viewSize: viewSize, now: baseTime.addingTimeInterval(1.2))
         #expect(appModel.trackedOverlays["101"]?.visibilityStatus == .visible)
+        #expect(appModel.trackedOverlays["101"]?.overlayOpacity == 1.0)
 
         appModel.ingestOCRResults([], viewSize: viewSize, now: baseTime.addingTimeInterval(1.6))
         #expect(appModel.trackedOverlays["101"]?.visibilityStatus == .fading)
+        let fadingOpacity = appModel.trackedOverlays["101"]?.overlayOpacity ?? -1
+        #expect(fadingOpacity > 0.0 && fadingOpacity < 1.0)
 
         appModel.ingestOCRResults([], viewSize: viewSize, now: baseTime.addingTimeInterval(1.9))
         #expect(appModel.trackedOverlays["101"] == nil)

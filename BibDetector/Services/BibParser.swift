@@ -28,10 +28,13 @@ enum BibParser {
         }
 
         // Also try zero-padded variants so "50" can match a JSON entry stored as "050"
+        var seen = Set(variants)
         var padded = noLeadingZeros
         while padded.count < 5 {
             padded = "0" + padded
-            variants.append(padded)
+            if seen.insert(padded).inserted {
+                variants.append(padded)
+            }
         }
 
         return variants

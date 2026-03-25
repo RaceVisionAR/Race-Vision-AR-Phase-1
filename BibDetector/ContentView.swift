@@ -104,8 +104,8 @@ struct ContentView: View {
                         .foregroundStyle(.white.opacity(0.85))
                 }
                 HStack(spacing: 6) {
-                    Text("# \(track.bibNumber)")
-                    if let category = profile.category {
+                    Text("# \(profile.bibNumber)")
+                    if let category = profile.category, !category.isEmpty {
                         Text("·")
                         Text(category)
                     }
