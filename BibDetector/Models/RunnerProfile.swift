@@ -4,8 +4,8 @@ struct RunnerProfile: Codable, Equatable, Identifiable {
     let bibNumber: String
     let name: String
     let nickname: String?
-    let team: String?
-    let category: String?
+    let team: String? = nil
+    let category: String? = nil
 
     var id: String { bibNumber }
 
