@@ -106,7 +106,7 @@ struct ContentView: View {
                 }
                 .font(.caption2)
                 .foregroundStyle(accentColor.opacity(0.9))
-                if let team = profile.team {
+                if let team = profile.team, !team.isEmpty {
                     Text(team)
                         .font(.caption2)
                         .foregroundStyle(.white.opacity(0.6))
