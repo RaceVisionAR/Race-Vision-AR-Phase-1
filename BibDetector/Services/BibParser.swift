@@ -16,15 +16,27 @@ enum BibParser {
             return []
         }
 
+        var variants: [String] = [trimmed]
+
         let noLeadingZeros = String(trimmed.drop(while: { $0 == "0" }))
         if noLeadingZeros.isEmpty {
             return [trimmed]
         }
 
-        if noLeadingZeros == trimmed {
-            return [trimmed]
+        if noLeadingZeros != trimmed {
+            variants.append(noLeadingZeros)
         }
 
-        return [trimmed, noLeadingZeros]
+        // Also try zero-padded variants so "50" can match a JSON entry stored as "050"
+        var seen = Set(variants)
+        var padded = noLeadingZeros
+        while padded.count < 5 {
+            padded = "0" + padded
+            if seen.insert(padded).inserted {
+                variants.append(padded)
+            }
+        }
+
+        return variants
     }
 }

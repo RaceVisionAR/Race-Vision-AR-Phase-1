@@ -31,6 +31,18 @@ struct BibDetectorTests {
         #expect(repository.matchRunner(bibNumber: "999") == nil)
     }
 
+    @Test func repositoryMatchesPaddedBibWhenOCRStripsLeadingZero() async throws {
+        // OCR reads "50" but the runner is registered as "050" in the dataset
+        let repository = await RunnerRepository(
+            runners: [
+                RunnerProfile(bibNumber: "050", name: "Test Runner", nickname: "T")
+            ]
+        )
+
+        await #expect(repository.matchRunner(bibNumber: "50")?.name == "Test Runner")
+        await #expect(repository.matchRunner(bibNumber: "050")?.name == "Test Runner")
+    }
+
     @MainActor
     @Test func appModelPromotesVisibleTrackThenFadesAndRemovesIt() async throws {
         let repository = RunnerRepository(
@@ -53,13 +65,17 @@ struct BibDetectorTests {
 
         #expect(appModel.visibleTracks.count == 1)
         #expect(appModel.trackedOverlays["101"]?.visibilityStatus == .visible)
+        #expect(appModel.trackedOverlays["101"]?.overlayOpacity == 1.0)
         #expect(appModel.trackedOverlays["101"]?.runnerProfile?.displayName == "Jordy")
 
         appModel.ingestOCRResults([], viewSize: viewSize, now: baseTime.addingTimeInterval(1.2))
         #expect(appModel.trackedOverlays["101"]?.visibilityStatus == .visible)
+        #expect(appModel.trackedOverlays["101"]?.overlayOpacity == 1.0)
 
         appModel.ingestOCRResults([], viewSize: viewSize, now: baseTime.addingTimeInterval(1.6))
         #expect(appModel.trackedOverlays["101"]?.visibilityStatus == .fading)
+        let fadingOpacity = appModel.trackedOverlays["101"]?.overlayOpacity ?? -1
+        #expect(fadingOpacity > 0.0 && fadingOpacity < 1.0)
 
         appModel.ingestOCRResults([], viewSize: viewSize, now: baseTime.addingTimeInterval(1.9))
         #expect(appModel.trackedOverlays["101"] == nil)

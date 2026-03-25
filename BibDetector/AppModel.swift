@@ -17,6 +17,7 @@ final class AppModel: ObservableObject {
     private var isProcessingFrame = false
     private var lastOCRTime = Date.distantPast
     private var recentStabilizedBibs: [String] = []
+    private var cameraPortraitAspectRatio: CGFloat = 3.0 / 4.0
 
     private let ocrInterval: TimeInterval = 0.2
     private let stabilizationWindow: TimeInterval = 0.8
@@ -64,6 +65,11 @@ final class AppModel: ObservableObject {
     }
 
     func processFrame(_ frame: ARFrame, viewSize: CGSize) {
+        let res = frame.camera.imageResolution
+        if res.width > 0 {
+            // Native frame is landscape; portrait aspect = shorter ÷ longer
+            cameraPortraitAspectRatio = res.height / res.width
+        }
         refreshTrackLifecycle(viewSize: viewSize, now: Date())
 
         guard isARSupported else {
@@ -180,6 +186,7 @@ final class AppModel: ObservableObject {
             if detectedBibs.contains(bibNumber) {
                 if track.hasMetVisibilityThreshold {
                     track.visibilityStatus = .visible
+                    track.overlayOpacity = 1.0
                 }
                 nextTracks[bibNumber] = track
                 continue
@@ -193,7 +200,14 @@ final class AppModel: ObservableObject {
                     continue
                 }
 
-                track.visibilityStatus = timeSinceLastSeen > visibleGracePeriod ? .fading : .visible
+                if timeSinceLastSeen > visibleGracePeriod {
+                    track.visibilityStatus = .fading
+                    let fadeProgress = (timeSinceLastSeen - visibleGracePeriod) / fadeOutDuration
+                    track.overlayOpacity = max(0.0, 1.0 - fadeProgress)
+                } else {
+                    track.visibilityStatus = .visible
+                    track.overlayOpacity = 1.0
+                }
                 nextTracks[bibNumber] = track
                 continue
             }
@@ -242,11 +256,38 @@ final class AppModel: ObservableObject {
     }
 
     private func convertVisionRectToView(_ normalizedRect: CGRect, viewSize: CGSize) -> CGRect {
-        let width = normalizedRect.width * viewSize.width
-        let height = normalizedRect.height * viewSize.height
-        let x = normalizedRect.minX * viewSize.width
-        let y = (1 - normalizedRect.minY - normalizedRect.height) * viewSize.height
+        // Vision processes the frame with orientation: .right, so its normalized
+        // bounding boxes are already in portrait space:
+        //   x: 0→1 = left→right, y: 0→1 = bottom→top (y-up).
+        //
+        // ARSCNView aspect-fills the camera image into the view.
+        // Camera portrait AR = H_landscape / W_landscape (e.g. 1440/1920 = 0.75).
+        let viewAR = viewSize.width / viewSize.height
 
-        return CGRect(x: x, y: y, width: width, height: height)
+        let displayedWidth: CGFloat
+        let displayedHeight: CGFloat
+        let offsetX: CGFloat
+        let offsetY: CGFloat
+
+        if cameraPortraitAspectRatio > viewAR {
+            // Camera wider than view → fill height, crop left/right
+            displayedHeight = viewSize.height
+            displayedWidth = viewSize.height * cameraPortraitAspectRatio
+            offsetX = (displayedWidth - viewSize.width) / 2
+            offsetY = 0
+        } else {
+            // Camera taller than view → fill width, crop top/bottom
+            displayedWidth = viewSize.width
+            displayedHeight = viewSize.width / cameraPortraitAspectRatio
+            offsetX = 0
+            offsetY = (displayedHeight - viewSize.height) / 2
+        }
+
+        let x = normalizedRect.minX * displayedWidth - offsetX
+        let y = (1 - normalizedRect.maxY) * displayedHeight - offsetY
+        let w = normalizedRect.width * displayedWidth
+        let h = normalizedRect.height * displayedHeight
+
+        return CGRect(x: x, y: y, width: w, height: h)
     }
 }

@@ -65,6 +65,8 @@ struct ContentView: View {
                 ForEach(appModel.visibleTracks) { track in
                     overlayCard(for: track, in: geometry.size)
                         .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                        .ignoresSafeArea()
+
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -87,28 +89,46 @@ struct ContentView: View {
     private func overlayCard(for track: TrackedRunnerOverlay, in viewSize: CGSize) -> some View {
         let rect = track.overlayRect
         let accentColor: Color = track.runnerProfile == nil ? .yellow : .green
-
-        RoundedRectangle(cornerRadius: 8)
-            .stroke(accentColor, lineWidth: 2)
-            .frame(width: rect.width, height: rect.height)
-            .opacity(track.overlayOpacity)
-            .position(x: rect.midX, y: rect.midY)
-
-        VStack(alignment: .leading, spacing: 2) {
-            Text(track.displayName)
-                .font(.caption.bold())
-            Text("Bib \(track.bibNumber)")
+        
+        VStack(alignment: .leading, spacing: 3) {
+            if let profile = track.runnerProfile {
+                Text(profile.name)
+                    .font(.caption.bold())
+                if let nickname = profile.nickname, !nickname.isEmpty, nickname != profile.name {
+                    Text("\"\(nickname)\"")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+                HStack(spacing: 6) {
+                    Text("# \(profile.bibNumber)")
+                    if let category = profile.category, !category.isEmpty {
+                        Text("·")
+                        Text(category)
+                    }
+                }
                 .font(.caption2)
-                .foregroundStyle(.white.opacity(0.75))
+                .foregroundStyle(accentColor.opacity(0.9))
+                if let team = profile.team, !team.isEmpty {
+                    Text(team)
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+            } else {
+                Text("Bib \(track.bibNumber)")
+                    .font(.caption.bold())
+                Text("# \(track.bibNumber)")
+                    .font(.caption2)
+                    .foregroundStyle(accentColor.opacity(0.9))
+            }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
-        .background(.black.opacity(0.78), in: Capsule())
+        .background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 8))
         .foregroundStyle(.white)
         .opacity(track.overlayOpacity)
         .position(
             x: clamp(rect.midX, min: 88, max: viewSize.width - 88),
-            y: max(24, rect.minY - 22)
+            y: max(24, rect.minY - 50)
         )
     }
 
