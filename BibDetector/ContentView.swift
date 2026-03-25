@@ -88,12 +88,6 @@ struct ContentView: View {
         let rect = track.overlayRect
         let accentColor: Color = track.runnerProfile == nil ? .yellow : .green
 
-        RoundedRectangle(cornerRadius: 8)
-            .stroke(accentColor, lineWidth: 2)
-            .frame(width: rect.width, height: rect.height)
-            .opacity(track.overlayOpacity)
-            .position(x: rect.midX, y: rect.midY)
-
         VStack(alignment: .leading, spacing: 3) {
             if let profile = track.runnerProfile {
                 Text(profile.name)
