@@ -1,195 +1,144 @@
 # BibDetector
 
-BibDetector is a SwiftUI + ARKit prototype that detects race bib numbers from live camera frames, stabilizes OCR results over time, and overlays matched runner cards directly on top of each detected bib in the camera view.
+An iOS prototype that uses augmented reality and computer vision to detect race bib numbers in real time and display a runner's name and details as an AR overlay above them.
 
-The app is designed as a lightweight MVP focused on real-time detection flow, actor-safe concurrency, and a clean separation between UI, frame processing, OCR, parsing, multi-track state, and runner lookup.
+---
 
-## What The App Does
+## Requirements
 
-- Streams live frames from ARKit.
-- Runs OCR on each sampled frame using Apple Vision text recognition.
-- Extracts bib candidates (digits only, 2 to 5 characters).
-- Emits multiple valid bib detections per frame, deduplicated by normalized bib number.
-- Stabilizes noisy frame-by-frame OCR results with a per-bib short time-window hit strategy.
-- Matches stabilized bib numbers against local runner data.
-- Draws one bounding box and runner card per visible bib in real time.
+- **Xcode** 15 or later
+- **iOS** 16 or later
+- **Physical iPhone** with an A-series chip (ARKit and Vision do not run in the simulator)
+- An **Apple Developer account** (free tier works) for device signing
 
-## Tech Stack
+No third-party dependencies. The project uses only Apple frameworks — no CocoaPods, Swift Package Manager packages, or Carthage.
 
-- SwiftUI for UI and app structure
-- ARKit (`ARSCNView`, `ARSessionDelegate`) for camera frame stream
-- Vision (`VNRecognizeTextRequest`) for OCR
-- Swift Concurrency (`actor`, `Task`, `@MainActor`) for thread-safe processing
-- XCTest / Swift Testing for unit and UI tests
+---
+
+## How to Build and Run
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/RabinApps/BibDetectorNative.git
+   cd BibDetectorNative
+   ```
+
+2. Open the project in Xcode:
+   ```bash
+   open BibDetector.xcodeproj
+   ```
+
+3. Connect your iPhone via USB.
+
+4. In Xcode's toolbar, click the destination selector and choose your iPhone (not "My Mac").
+
+5. Select the `BibDetector` scheme if it is not already selected.
+
+6. Go to **BibDetector target → Signing & Capabilities** and set the **Team** to your Apple ID.
+
+7. Press **Cmd+R** or click the Run button.
+
+8. On first launch, grant camera access when prompted.
+
+> **Note:** Building for "My Mac" will fail with a `UIKit` import error — the app requires iOS and an ARKit-capable device.
+
+---
+
+## How Bib Detection Works
+
+The detection pipeline runs continuously while the camera is live and consists of four stages:
+
+### 1. AR Camera Feed (`ARCameraView.swift`)
+`ARSCNView` (ARKit's scene view) provides a live camera feed and calls `session(_:didUpdate:)` on every frame at ~60 fps. Each frame's `CVPixelBuffer` is passed to the OCR stage.
+
+### 2. OCR via Vision (`BibOCRService.swift`)
+Frames are sampled at 5 fps (every 200 ms) to avoid overloading the device. Each sampled frame is processed by `VNRecognizeTextRequest` from Apple's Vision framework:
+
+- **Orientation:** The raw camera buffer is landscape (e.g. 1920×1440). The request is initialised with `orientation: .right` so Vision treats it as portrait-oriented — matching what the user sees on screen.
+- **Recognition level:** `.fast` for near real-time performance.
+- **Language correction:** Disabled, since bib numbers are digits and correction would introduce errors.
+
+Each text observation is passed to `BibParser`, which strips non-digit characters and accepts only strings of 2–5 digits as valid bib candidates. Duplicate detections of the same bib number keep only the highest-confidence result.
+
+### 3. Stabilisation and Tracking (`AppModel.swift`)
+Raw OCR results are noisy — the same bib may flicker in and out between frames. `AppModel` uses a confidence and consistency model to suppress noise:
+
+- A bib must be detected **3 times within an 0.8 s window** before it is considered stable.
+- Once stable, the bib is matched against the runner dataset and an overlay card is created.
+- Overlays stay on screen for **1.0 s after the bib was last seen**, then fade out over **0.35 s**.
+- At most **4 overlay cards** are shown simultaneously.
+
+### 4. Coordinate Conversion (`AppModel.convertVisionRectToView`)
+Vision's bounding boxes are in normalised portrait space (origin bottom-left, y-up). The screen is portrait but the camera sensor is physically landscape, and `ARSCNView` aspect-fills the feed into the view — cropping the sides. The conversion accounts for this:
+
+- The camera's actual resolution is read from `ARFrame.camera.imageResolution` each frame.
+- The portrait aspect ratio (`cameraHeight / cameraWidth`) is compared to the view's aspect ratio.
+- The displayed width and side-crop offset are computed, then applied to map Vision coordinates to UIKit points.
+
+### 5. AR Overlay (`ContentView.swift`)
+SwiftUI overlay cards are rendered on top of the `ARSCNView` using `.position()`. Each card shows:
+- Runner's full name
+- Nickname (if different from name)
+- Bib number and race category (accent colour)
+- Team name
+
+Cards are green when the bib matches a known runner and yellow for unrecognised bibs.
+
+---
+
+## Runner Dataset
+
+Stored in `BibDetector/Resources/runners.json`. The app ships with 10 runners. To add more, append entries following this format:
+
+```json
+{
+  "bibNumber": "101",
+  "name": "Jordan Alvarez",
+  "nickname": "Jordy",
+  "team": "City Striders",
+  "category": "Half Marathon"
+}
+```
+
+`nickname`, `team`, and `category` are optional. Changes take effect on the next build.
+
+---
+
+## External Libraries and Frameworks
+
+All frameworks are part of the iOS SDK — no external dependencies are required.
+
+| Framework | Purpose |
+|-----------|---------|
+| **ARKit** | AR session, world tracking, live camera frame delivery |
+| **Vision** | On-device OCR (`VNRecognizeTextRequest`) |
+| **SwiftUI** | UI, overlay cards, layout |
+| **UIKit** | `UIViewRepresentable` bridge for `ARSCNView` |
+| **AVFoundation** | Camera permission request |
+| **Combine** | `@Published` / `ObservableObject` state propagation |
+| **CoreGraphics** | Coordinate geometry (`CGRect`, `CGAffineTransform`) |
+| **Swift Testing** | Unit tests (`@Test`, `#expect`) |
+
+---
 
 ## Project Structure
 
-- `BibDetector/BibDetectorApp.swift`
-  - App entry point, injects shared `AppModel` via `environmentObject`.
-- `BibDetector/ContentView.swift`
-  - Main screen and overlay UI.
-  - Handles AR unsupported and camera-permission states.
-- `BibDetector/AR/ARCameraView.swift`
-  - `UIViewRepresentable` wrapper around `ARSCNView`.
-  - Forwards each frame to the app model on `@MainActor`.
-- `BibDetector/AppModel.swift`
-  - Main state machine and orchestration layer.
-  - Throttles OCR, maintains per-bib track state, stabilizes results, manages lifecycle, maps coordinates, updates UI state.
-- `BibDetector/Services/BibOCRService.swift`
-  - `actor` that performs Vision OCR and returns deduplicated bib candidates for the current frame.
-- `BibDetector/Services/BibParser.swift`
-  - Pure parsing helpers for bib normalization and variant generation.
-- `BibDetector/Services/RunnerRepository.swift`
-  - Loads runner records from `runners.json` and resolves bib to profile.
-- `BibDetector/Models/BibDetection.swift`
-  - Detection model (bib, confidence, bounding box, timestamp).
-- `BibDetector/Models/TrackedRunnerOverlay.swift`
-  - Per-bib overlay track model, including lifecycle state, detection history, matched runner, and screen-space rect.
-- `BibDetector/Models/RunnerProfile.swift`
-  - Runner model and display name logic.
-- `BibDetector/Resources/runners.json`
-  - Local sample runner database.
-
-## End-To-End Runtime Flow
-
-1. App launch
-
-- `BibDetectorApp` creates one shared `AppModel`.
-- `ContentView` starts model initialization via `.task { appModel.start() }`.
-
-2. Permission and capability checks
-
-- `AppModel` checks camera permission and AR support.
-- UI displays fallback state if AR is unsupported or permission is denied.
-
-3. Frame ingestion
-
-- `ARCameraView` receives `ARSession` updates in its coordinator.
-- Each frame is forwarded to `onFrameUpdate` inside `Task { @MainActor in ... }`.
-
-4. Frame gating and throttling
-
-- `AppModel.processFrame` applies fast guards:
-  - AR must be supported.
-  - Camera permission must be authorized.
-  - OCR interval must be met (`ocrInterval = 0.2s`).
-  - A previous OCR pass must not still be in flight.
-
-5. OCR execution
-
-- The frame pixel buffer is passed to `BibOCRService.detectBib`.
-- Vision runs `VNRecognizeTextRequest` with:
-  - language: `en_US`
-  - recognition level: `fast`
-  - language correction disabled
-
-6. Candidate filtering
-
-- OCR observations are reduced to top text candidates.
-- `BibParser.normalizedBibCandidate` strips non-digits and only accepts length 2 to 5.
-- Highest-confidence observation for each normalized bib becomes an `OCRBibResult`.
-
-7. Multi-track stabilization
-
-- `AppModel` maintains a bib-keyed track store.
-- Each track keeps a short-lived detection history (`stabilizationWindow = 0.8s`).
-- A card becomes visible after `consistentDetectionsRequired = 3` hits for the same bib.
-- Visible tracks are held when temporarily lost (`visibleGracePeriod = 1.0s`), then faded and removed (`fadeOutDuration = 0.35s`).
-- OCR noise is constrained with `minimumTrackConfidence = 0.35` and `maxTrackedCards = 4`.
-
-8. Runner matching and overlay
-
-- `RunnerRepository.matchRunner` tries bib variants (including leading-zero normalization).
-- Each stabilized track resolves its runner profile once and keeps it for the life of that track.
-- Vision normalized bounding boxes are converted to view coordinates per track.
-- UI updates with one card per visible bib plus tracked-count debug status.
-
-## Concurrency Model
-
-- `AppModel` is `@MainActor` to keep UI state mutations serialized and safe.
-- `BibOCRService` is an `actor` to isolate OCR work.
-- Frame processing uses a MainActor task with `defer` to guarantee `isProcessingFrame` cleanup.
-- `BibParser` helper methods are marked `nonisolated` because they are pure stateless utilities and can be called from any isolation domain.
-
-This architecture avoids actor isolation warnings while keeping frame flow responsive.
-
-## Data Model Notes
-
-- `OCRBibResult`: per-frame OCR output used internally by app model.
-- `BibDetection`: per-frame detection with timestamp and geometry.
-- `TrackedRunnerOverlay`: per-bib track with visibility state, confidence history, and screen-space overlay rect.
-- `RunnerProfile`: local profile keyed by bib number; display name prefers nickname.
-
-## Running The App
-
-### Requirements
-
-- Xcode 17+
-- iOS Simulator or physical iPhone
-- ARKit-capable device for real camera/AR behavior
-
-### Open And Run
-
-1. Open `BibDetector.xcodeproj` in Xcode.
-2. Select the `BibDetector` scheme.
-3. Choose an iOS Simulator or device target.
-4. Build and run.
-
-### Camera Permission
-
-The app requires camera permission and includes:
-
-- `NSCameraUsageDescription`: "BibDetector uses the camera to detect race bib numbers and show runner overlays."
-
-If permission is denied, use the in-app "Open Settings" button to re-enable access.
-
-## Testing
-
-Run tests from Xcode or terminal:
-
-```bash
-xcodebuild -scheme BibDetector -destination 'platform=iOS Simulator,name=iPhone 17' test
 ```
+BibDetector/
+├── AR/
+│   └── ARCameraView.swift          # UIViewRepresentable wrapping ARSCNView
+├── Models/
+│   ├── RunnerProfile.swift         # Codable runner data model
+│   └── TrackedRunnerOverlay.swift  # Per-bib tracking state
+├── Services/
+│   ├── BibOCRService.swift         # Vision OCR, runs as a Swift actor
+│   ├── BibParser.swift             # Digit extraction and variant generation
+│   └── RunnerRepository.swift      # In-memory runner lookup
+├── Resources/
+│   └── runners.json                # Runner dataset (10 entries)
+├── AppModel.swift                  # Main state, detection pipeline, lifecycle
+└── ContentView.swift               # Root SwiftUI view and overlay rendering
 
-Current tests include:
-
-- Bib parser normalization behavior
-- Runner repository matching with leading-zero fallback
-- Track promotion / grace-period / fade lifecycle behavior
-- Confidence floor and maximum-card capping behavior
-- Basic UI launch tests
-
-## Current Limitations
-
-- OCR is configured for speed (`.fast`), which can reduce accuracy at distance or motion blur.
-- Bib extraction assumes numeric bibs with 2 to 5 digits.
-- Runner dataset is local static JSON (no remote sync).
-- Overlay remains screen-space only; it does not use 3D anchors or long-term person re-identification.
-- Real-world performance depends on lighting, bib typography, and camera stability.
-
-## Tuning Knobs
-
-In `AppModel`:
-
-- `ocrInterval` (default `0.2`): lower for faster updates, higher for less CPU usage.
-- `stabilizationWindow` (default `0.8`): larger window tolerates more OCR jitter before a track is discarded.
-- `consistentDetectionsRequired` (default `3`): lower values show cards sooner, higher values reduce false positives.
-- `visibleGracePeriod` (default `1.0`): how long a visible card stays fully shown after a miss.
-- `fadeOutDuration` (default `0.35`): how long a stale visible card remains in the fade-out state before removal.
-- `minimumTrackConfidence` (default `0.35`): floor for accepting per-frame OCR results into the track store.
-- `maxTrackedCards` (default `4`): upper bound on simultaneously tracked overlays.
-
-In `BibOCRService`:
-
-- `recognitionLevel` can be switched to `.accurate` if quality is preferred over speed.
-
-## Future Improvements
-
-- Improve per-person motion smoothing beyond OCR bounding-box updates.
-- Add support for alphanumeric bib formats.
-- Introduce remote runner directory and caching.
-- Add benchmark metrics (frame rate, OCR latency, false positives).
-
-## License
-
-No license file is currently included in this repository.
+BibDetectorTests/
+└── BibDetectorTests.swift          # Unit tests for parser, repository, and AppModel
+```
