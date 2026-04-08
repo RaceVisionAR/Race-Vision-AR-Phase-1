@@ -50,7 +50,12 @@ final class AppModel: ObservableObject {
     func start() {
         cameraAuthorizationStatus = AVCaptureDevice.authorizationStatus(for: .video)
         isARSupported = ARWorldTrackingConfiguration.isSupported
-        debugStatus = "Ready"
+        debugStatus = "Loading runners..."
+
+        Task {
+            let result = await repository.load()
+            debugStatus = result.statusMessage
+        }
 
         if cameraAuthorizationStatus == .notDetermined {
             Task {
