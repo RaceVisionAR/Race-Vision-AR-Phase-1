@@ -11,6 +11,7 @@ import UIKit
 
 struct ContentView: View {
     @EnvironmentObject private var appModel: AppModel
+    @EnvironmentObject private var authService: AuthService
 
     var body: some View {
         ZStack {
@@ -70,13 +71,38 @@ struct ContentView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("RaceVisionAR")
-                        .font(.headline)
+                    HStack(spacing: 6) {
+                        Text("RaceVisionAR")
+                            .font(.headline)
+                        if appModel.isLoadingRunners {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                                .tint(.secondary)
+                        } else if appModel.isOffline {
+                            Image(systemName: "wifi.slash")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                    Text(appModel.debugStatus)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(10)
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                 .padding(.top, 12)
                 .padding(.leading, 12)
+
+                Button {
+                    try? authService.signOut()
+                } label: {
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                        .padding(10)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                }
+                .padding(.top, 12)
+                .padding(.trailing, 12)
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .animation(.easeInOut(duration: 0.25), value: appModel.trackedOverlays)
         }

@@ -10,6 +10,8 @@ final class AppModel: ObservableObject {
     @Published var isARSupported: Bool = ARWorldTrackingConfiguration.isSupported
     @Published var trackedOverlays: [String: TrackedRunnerOverlay] = [:]
     @Published var debugStatus: String = "Initializing"
+    @Published var isLoadingRunners = true
+    @Published var isOffline = false
 
     private let repository: RunnerRepository
     private let ocrService: BibOCRService
@@ -51,9 +53,13 @@ final class AppModel: ObservableObject {
         cameraAuthorizationStatus = AVCaptureDevice.authorizationStatus(for: .video)
         isARSupported = ARWorldTrackingConfiguration.isSupported
         debugStatus = "Loading runners..."
+        isLoadingRunners = true
+        isOffline = false
 
         Task {
             let result = await repository.load()
+            isLoadingRunners = false
+            isOffline = result.isOffline
             debugStatus = result.statusMessage
         }
 

@@ -9,17 +9,25 @@ import FirebaseCore
 import SwiftUI
 
 @main
+@MainActor
 struct BibDetectorApp: App {
+    @StateObject private var authService = AuthService()
+    @StateObject private var appModel = AppModel()
+
     init() {
         FirebaseApp.configure()
     }
 
-    @StateObject private var appModel = AppModel()
-
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(appModel)
+            if authService.isSignedIn {
+                ContentView()
+                    .environmentObject(appModel)
+                    .environmentObject(authService)
+            } else {
+                LoginView()
+                    .environmentObject(authService)
+            }
         }
     }
 }
