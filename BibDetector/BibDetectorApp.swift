@@ -6,6 +6,7 @@
 //
 
 import FirebaseCore
+import GoogleSignIn
 import SwiftUI
 
 @main
@@ -16,6 +17,9 @@ struct BibDetectorApp: App {
 
     init() {
         FirebaseApp.configure()
+        if let clientID = FirebaseApp.app()?.options.clientID {
+            GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+        }
     }
 
     var body: some Scene {

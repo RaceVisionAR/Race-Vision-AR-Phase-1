@@ -4,6 +4,8 @@ import CryptoKit
 import FirebaseFirestore
 import FirebaseAuth
 import Foundation
+import GoogleSignIn
+import UIKit
 
 @MainActor
 final class AuthService: ObservableObject {
@@ -70,8 +72,53 @@ final class AuthService: ObservableObject {
         }
     }
 
+    func signInWithGoogle() async throws {
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootVC = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
+            throw AuthError.noRootViewController
+        }
+
+        let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootVC)
+
+        guard let idToken = result.user.idToken?.tokenString else {
+            throw AuthError.invalidCredential
+        }
+
+        let credential = GoogleAuthProvider.credential(
+            withIDToken: idToken,
+            accessToken: result.user.accessToken.tokenString
+        )
+
+        let authResult = try await Auth.auth().signIn(with: credential)
+        let profile = result.user.profile
+        await saveUserProfile(
+            uid: authResult.user.uid,
+            email: profile?.email,
+            firstName: profile?.givenName,
+            lastName: profile?.familyName
+        )
+        user = authResult.user
+    }
+
+    func signInWithEmail(email: String, password: String) async throws {
+        let result = try await Auth.auth().signIn(withEmail: email, password: password)
+        user = result.user
+    }
+
+    func registerWithEmail(email: String, password: String, firstName: String, lastName: String) async throws {
+        let result = try await Auth.auth().createUser(withEmail: email, password: password)
+        await saveUserProfile(
+            uid: result.user.uid,
+            email: email,
+            firstName: firstName.isEmpty ? nil : firstName,
+            lastName: lastName.isEmpty ? nil : lastName
+        )
+        user = result.user
+    }
+
     func signOut() throws {
         try Auth.auth().signOut()
+        GIDSignIn.sharedInstance.signOut()
         self.user = nil
         self.authError = nil
     }
@@ -112,9 +159,13 @@ final class AuthService: ObservableObject {
 
     enum AuthError: LocalizedError {
         case invalidCredential
+        case noRootViewController
 
         var errorDescription: String? {
-            "Sign in failed. Please try again."
+            switch self {
+            case .invalidCredential: return "Sign in failed. Please try again."
+            case .noRootViewController: return "Unable to present sign-in. Please try again."
+            }
         }
     }
 }
