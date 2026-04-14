@@ -10,10 +10,11 @@ final class AppModel: ObservableObject {
     @Published var isARSupported: Bool = ARWorldTrackingConfiguration.isSupported
     @Published var trackedOverlays: [String: TrackedRunnerOverlay] = [:]
     @Published var debugStatus: String = "Initializing"
-    @Published var isLoadingRunners = true
+    @Published var isLoadingRunners = false
     @Published var isOffline = false
+    @Published var selectedRace: Race?
 
-    private let repository: RunnerRepository
+    private var repository: RunnerRepository = RunnerRepository(raceId: "preview")
     private let ocrService: BibOCRService
 
     private var isProcessingFrame = false
@@ -32,24 +33,34 @@ final class AppModel: ObservableObject {
     var visibleTracks: [TrackedRunnerOverlay] {
         trackedOverlays.values
             .filter(\.isRenderable)
-            .filter({ overlay in
-                return overlay.runnerProfile != nil
-            })
+            .filter { $0.runnerProfile != nil }
             .sorted { lhs, rhs in
                 if lhs.visibilityStatus != rhs.visibilityStatus {
                     return lhs.visibilityStatus == .visible
                 }
-
                 return lhs.lastSeenAt > rhs.lastSeenAt
             }
     }
 
-    init(repository: RunnerRepository = RunnerRepository(), ocrService: BibOCRService = BibOCRService()) {
-        self.repository = repository
+    init(ocrService: BibOCRService = BibOCRService()) {
         self.ocrService = ocrService
     }
 
+    /// Called by RaceSelectionView when a race is tapped. Resets all scan state
+    /// and replaces the repository so the next start() loads the correct bibs.
+    func selectRace(_ race: Race) {
+        selectedRace = race
+        repository = RunnerRepository(raceId: race.id)
+        trackedOverlays = [:]
+        recentStabilizedBibs = []
+        debugStatus = "Race selected"
+    }
+
+    /// Called by ContentView.task — loads runners for the current race and
+    /// ensures camera permission is resolved.
     func start() {
+        guard selectedRace != nil else { return }
+
         cameraAuthorizationStatus = AVCaptureDevice.authorizationStatus(for: .video)
         isARSupported = ARWorldTrackingConfiguration.isSupported
         debugStatus = "Loading runners..."
@@ -64,9 +75,7 @@ final class AppModel: ObservableObject {
         }
 
         if cameraAuthorizationStatus == .notDetermined {
-            Task {
-                await requestCameraPermission()
-            }
+            Task { await requestCameraPermission() }
         }
     }
 
@@ -81,7 +90,6 @@ final class AppModel: ObservableObject {
     func processFrame(_ frame: ARFrame, viewSize: CGSize) {
         let res = frame.camera.imageResolution
         if res.width > 0 {
-            // Native frame is landscape; portrait aspect = shorter ÷ longer
             cameraPortraitAspectRatio = res.height / res.width
         }
         refreshTrackLifecycle(viewSize: viewSize, now: Date())
@@ -91,28 +99,18 @@ final class AppModel: ObservableObject {
             return
         }
 
-        guard cameraAuthorizationStatus == .authorized else {
-            return
-        }
+        guard cameraAuthorizationStatus == .authorized else { return }
 
         let now = Date()
-        guard now.timeIntervalSince(lastOCRTime) >= ocrInterval else {
-            return
-        }
-
-        guard !isProcessingFrame else {
-            return
-        }
+        guard now.timeIntervalSince(lastOCRTime) >= ocrInterval else { return }
+        guard !isProcessingFrame else { return }
 
         isProcessingFrame = true
         lastOCRTime = now
         let pixelBuffer = frame.capturedImage
 
         Task { @MainActor in
-            defer {
-                isProcessingFrame = false
-            }
-
+            defer { isProcessingFrame = false }
             let detected = await ocrService.detectBibs(in: pixelBuffer)
             ingestOCRResults(detected, viewSize: viewSize, now: Date())
         }
@@ -188,9 +186,7 @@ final class AppModel: ObservableObject {
         var nextTracks = trackedOverlays
 
         for bibNumber in Array(nextTracks.keys) {
-            guard var track = nextTracks[bibNumber] else {
-                continue
-            }
+            guard var track = nextTracks[bibNumber] else { continue }
 
             track.recentDetections = track.recentDetections.filter {
                 now.timeIntervalSince($0.timestamp) <= stabilizationWindow
@@ -270,12 +266,6 @@ final class AppModel: ObservableObject {
     }
 
     private func convertVisionRectToView(_ normalizedRect: CGRect, viewSize: CGSize) -> CGRect {
-        // Vision processes the frame with orientation: .right, so its normalized
-        // bounding boxes are already in portrait space:
-        //   x: 0→1 = left→right, y: 0→1 = bottom→top (y-up).
-        //
-        // ARSCNView aspect-fills the camera image into the view.
-        // Camera portrait AR = H_landscape / W_landscape (e.g. 1440/1920 = 0.75).
         let viewAR = viewSize.width / viewSize.height
 
         let displayedWidth: CGFloat
@@ -284,13 +274,11 @@ final class AppModel: ObservableObject {
         let offsetY: CGFloat
 
         if cameraPortraitAspectRatio > viewAR {
-            // Camera wider than view → fill height, crop left/right
             displayedHeight = viewSize.height
             displayedWidth = viewSize.height * cameraPortraitAspectRatio
             offsetX = (displayedWidth - viewSize.width) / 2
             offsetY = 0
         } else {
-            // Camera taller than view → fill width, crop top/bottom
             displayedWidth = viewSize.width
             displayedHeight = viewSize.width / cameraPortraitAspectRatio
             offsetX = 0

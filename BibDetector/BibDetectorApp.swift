@@ -14,6 +14,7 @@ import SwiftUI
 struct BibDetectorApp: App {
     @StateObject private var authService = AuthService()
     @StateObject private var appModel = AppModel()
+    @StateObject private var raceService = RaceService()
 
     init() {
         FirebaseApp.configure()
@@ -25,9 +26,18 @@ struct BibDetectorApp: App {
     var body: some Scene {
         WindowGroup {
             if authService.isSignedIn {
-                ContentView()
-                    .environmentObject(appModel)
-                    .environmentObject(authService)
+                NavigationStack {
+                    RaceSelectionView()
+                        .environmentObject(appModel)
+                        .environmentObject(authService)
+                        .environmentObject(raceService)
+                        .navigationDestination(for: Race.self) { race in
+                            ContentView()
+                                .environmentObject(appModel)
+                                .environmentObject(authService)
+                                .onAppear { appModel.selectRace(race) }
+                        }
+                }
             } else {
                 LoginView()
                     .environmentObject(authService)
