@@ -21,7 +21,7 @@ final class RaceService: ObservableObject {
             async let racesSnapTask = db.collection("races")
                 .whereField("isTestRace", isEqualTo: false)
                 .whereField("status", in: ["upcoming", "active"])
-                .order(by: "date")
+                .order(by: "createdAt", descending: true)
                 .getDocuments()
 
             let (testDoc, racesSnap) = try await (testDocTask, racesSnapTask)

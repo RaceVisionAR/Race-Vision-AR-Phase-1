@@ -5,6 +5,8 @@ struct RaceSelectionView: View {
     @EnvironmentObject private var authService: AuthService
     @EnvironmentObject private var raceService: RaceService
 
+    @State private var showAdminUpload = false
+
     var body: some View {
         ZStack {
             LinearGradient(
@@ -34,6 +36,10 @@ struct RaceSelectionView: View {
         }
         .task { await raceService.fetchRaces() }
         .navigationBarHidden(true)
+        .sheet(isPresented: $showAdminUpload) {
+            AdminUploadView()
+                .environmentObject(raceService)
+        }
     }
 
     // MARK: - Header
@@ -51,14 +57,25 @@ struct RaceSelectionView: View {
 
             Spacer()
 
-            Button {
-                try? authService.signOut()
-            } label: {
-                Image(systemName: "rectangle.portrait.and.arrow.right")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .frame(width: 38, height: 38)
-                    .background(Color(white: 0.18), in: Circle())
+            HStack(spacing: 10) {
+                if authService.isAdmin {
+                    Button { showAdminUpload = true } label: {
+                        Image(systemName: "arrow.up.doc")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(.green.opacity(0.9))
+                            .frame(width: 38, height: 38)
+                            .background(Color(white: 0.18), in: Circle())
+                    }
+                }
+                Button {
+                    try? authService.signOut()
+                } label: {
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .frame(width: 38, height: 38)
+                        .background(Color(white: 0.18), in: Circle())
+                }
             }
         }
         .padding(.horizontal, 24)

@@ -1,1 +1,72 @@
+# Sensitive/Credentials Files
+GoogleService-Info.plist
+# Xcode User Data & Preferences
+xcuserdata/
+*.xcuserdatad/
+DerivedData/
 
+# Xcode Build Artifacts
+build/
+*.build/
+*.app
+*.ipa
+*.dSYM/
+*.dsym/
+*.xcarchive
+*.swiftpm/
+
+# CocoaPods (if used in future)
+Pods/
+Podfile.lock
+
+# Build Intermediates
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# IDE & Editor Artifacts
+.vscode/
+.idea/
+*.iml
+*.swp
+*~
+.DS_Store
+.AppleDouble
+._*
+.project
+.classpath
+
+# macOS System Files
+.DS_Store
+.AppleDouble
+._*
+.LSOverride
+*.app/
+
+# Environment Variables & Local Config
+.env
+.env.local
+*.local
+
+# Temporary Files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.log
+
+# Test Coverage
+coverage/
+*.lcov
+
+# OS Specific
+Thumbs.db
+.Thumbs.db

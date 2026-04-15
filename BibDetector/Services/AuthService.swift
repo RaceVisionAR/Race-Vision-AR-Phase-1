@@ -11,6 +11,7 @@ import UIKit
 final class AuthService: ObservableObject {
     @Published var user: FirebaseAuth.User?
     @Published var authError: Error?
+    @Published var isAdmin = false
 
     var isSignedIn: Bool { user != nil }
 
@@ -21,8 +22,21 @@ final class AuthService: ObservableObject {
         Auth.auth().addStateDidChangeListener { [weak self] _, user in
             Task { @MainActor in
                 self?.user = user
+                if let uid = user?.uid {
+                    await self?.fetchUserRole(uid: uid)
+                } else {
+                    self?.isAdmin = false
+                }
             }
         }
+        if let uid = Auth.auth().currentUser?.uid {
+            Task { await fetchUserRole(uid: uid) }
+        }
+    }
+
+    private func fetchUserRole(uid: String) async {
+        let doc = try? await Firestore.firestore().collection("users").document(uid).getDocument()
+        isAdmin = doc?.data()?["role"] as? String == "admin"
     }
 
     // Called by SignInWithAppleButton request closure — stores nonce and returns sha256 hash.
