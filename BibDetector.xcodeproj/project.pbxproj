@@ -6,6 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		311931EE2F898FFB0085F3E1 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 311931ED2F898FFB0085F3E1 /* GoogleSignIn */; };
+		318BEC5F2F865D960009A5B3 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 318BEC5E2F865D960009A5B3 /* FirebaseAuth */; };
+		318BEC612F865D960009A5B3 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 318BEC602F865D960009A5B3 /* FirebaseCore */; };
+		318BEC632F865D960009A5B3 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 318BEC622F865D960009A5B3 /* FirebaseFirestore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		E65192B22F68AF6700D83A02 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -29,15 +36,23 @@
 		E65192BB2F68AF6700D83A02 /* BibDetectorUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BibDetectorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		311931BE2F898AA00085F3E1 /* Exceptions for "BibDetector" folder in "BibDetector" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = E65192A32F68AF6600D83A02 /* BibDetector */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		E65192A62F68AF6600D83A02 /* BibDetector */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				311931BE2F898AA00085F3E1 /* Exceptions for "BibDetector" folder in "BibDetector" target */,
+			);
 			path = BibDetector;
-			sourceTree = "<group>";
-		};
-		E65192B42F68AF6700D83A02 /* BibDetectorTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = BibDetectorTests;
 			sourceTree = "<group>";
 		};
 		E65192BE2F68AF6700D83A02 /* BibDetectorUITests */ = {
@@ -52,6 +67,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				318BEC612F865D960009A5B3 /* FirebaseCore in Frameworks */,
+				311931EE2F898FFB0085F3E1 /* GoogleSignIn in Frameworks */,
+				318BEC5F2F865D960009A5B3 /* FirebaseAuth in Frameworks */,
+				318BEC632F865D960009A5B3 /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -72,12 +91,19 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		318BEC5D2F865D960009A5B3 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		E651929B2F68AF6600D83A02 = {
 			isa = PBXGroup;
 			children = (
 				E65192A62F68AF6600D83A02 /* BibDetector */,
-				E65192B42F68AF6700D83A02 /* BibDetectorTests */,
 				E65192BE2F68AF6700D83A02 /* BibDetectorUITests */,
+				318BEC5D2F865D960009A5B3 /* Frameworks */,
 				E65192A52F68AF6600D83A02 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -112,6 +138,10 @@
 			);
 			name = BibDetector;
 			packageProductDependencies = (
+				318BEC5E2F865D960009A5B3 /* FirebaseAuth */,
+				318BEC602F865D960009A5B3 /* FirebaseCore */,
+				318BEC622F865D960009A5B3 /* FirebaseFirestore */,
+				311931ED2F898FFB0085F3E1 /* GoogleSignIn */,
 			);
 			productName = BibDetector;
 			productReference = E65192A42F68AF6600D83A02 /* BibDetector.app */;
@@ -129,9 +159,6 @@
 			);
 			dependencies = (
 				E65192B32F68AF6700D83A02 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				E65192B42F68AF6700D83A02 /* BibDetectorTests */,
 			);
 			name = BibDetectorTests;
 			packageProductDependencies = (
@@ -171,7 +198,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2630;
-				LastUpgradeCheck = 2630;
+				LastUpgradeCheck = 2640;
 				TargetAttributes = {
 					E65192A32F68AF6600D83A02 = {
 						CreatedOnToolsVersion = 26.3;
@@ -195,6 +222,10 @@
 			);
 			mainGroup = E651929B2F68AF6600D83A02;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				318BEC5C2F865C610009A5B3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				311931BA2F89870D0085F3E1 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E65192A52F68AF6600D83A02 /* Products */;
 			projectDirPath = "";
@@ -303,6 +334,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = W548P2865A;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -326,6 +358,7 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -365,6 +398,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = W548P2865A;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -381,6 +415,7 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
 			name = Release;
@@ -390,14 +425,18 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = BibDetector/BibDetector.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 6H8LAPXJMU;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 7L9P642754;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BibDetector/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				INFOPLIST_KEY_NSCameraUsageDescription = "BibDetector uses the camera to detect race bib numbers and show runner overlays.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -409,12 +448,12 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.RabinApps.BibDetector;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tomcamp.tradingacademy;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -435,13 +474,18 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = BibDetector/BibDetector.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 7L9P642754;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BibDetector/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				INFOPLIST_KEY_NSCameraUsageDescription = "BibDetector uses the camera to detect race bib numbers and show runner overlays.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -453,12 +497,12 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.RabinApps.BibDetector;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tomcamp.tradingacademy;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -480,9 +524,10 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = W548P2865A;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.RabinApps.BibDetectorTests;
@@ -506,9 +551,10 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = W548P2865A;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.RabinApps.BibDetectorTests;
@@ -531,9 +577,10 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = W548P2865A;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.RabinApps.BibDetectorUITests;
@@ -556,9 +603,10 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = W548P2865A;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.RabinApps.BibDetectorUITests;
@@ -616,6 +664,48 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		311931BA2F89870D0085F3E1 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.1.0;
+			};
+		};
+		318BEC5C2F865C610009A5B3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.12.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		311931ED2F898FFB0085F3E1 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 311931BA2F89870D0085F3E1 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		318BEC5E2F865D960009A5B3 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 318BEC5C2F865C610009A5B3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		318BEC602F865D960009A5B3 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 318BEC5C2F865C610009A5B3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		318BEC622F865D960009A5B3 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 318BEC5C2F865C610009A5B3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E651929C2F68AF6600D83A02 /* Project object */;
 }

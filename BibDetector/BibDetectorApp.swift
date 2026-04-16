@@ -5,16 +5,43 @@
 //  Created by Alex Rabin on 3/16/26.
 //
 
+import FirebaseCore
+import GoogleSignIn
 import SwiftUI
 
 @main
+@MainActor
 struct BibDetectorApp: App {
+    @StateObject private var authService = AuthService()
     @StateObject private var appModel = AppModel()
+    @StateObject private var raceService = RaceService()
+
+    init() {
+        FirebaseApp.configure()
+        if let clientID = FirebaseApp.app()?.options.clientID {
+            GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+        }
+    }
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(appModel)
+            if authService.isSignedIn {
+                NavigationStack {
+                    RaceSelectionView()
+                        .environmentObject(appModel)
+                        .environmentObject(authService)
+                        .environmentObject(raceService)
+                        .navigationDestination(for: Race.self) { race in
+                            ContentView()
+                                .environmentObject(appModel)
+                                .environmentObject(authService)
+                                .onAppear { appModel.selectRace(race) }
+                        }
+                }
+            } else {
+                LoginView()
+                    .environmentObject(authService)
+            }
         }
     }
 }

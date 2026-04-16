@@ -11,6 +11,10 @@ import UIKit
 
 struct ContentView: View {
     @EnvironmentObject private var appModel: AppModel
+    @EnvironmentObject private var authService: AuthService
+    @Environment(\.dismiss) private var dismiss
+
+    private var isTestRace: Bool { appModel.selectedRace?.isTestRace ?? false }
 
     var body: some View {
         ZStack {
@@ -27,10 +31,11 @@ struct ContentView: View {
                 overlayView
             }
         }
-        .task {
-            appModel.start()
-        }
+        .task { appModel.start() }
+        .navigationBarHidden(true)
     }
+
+    // MARK: - Error states
 
     private var unsupportedView: some View {
         VStack(spacing: 12) {
@@ -49,15 +54,15 @@ struct ContentView: View {
             Text("Enable camera access in Settings to detect bib numbers.")
                 .foregroundStyle(.secondary)
             Button("Open Settings") {
-                guard let url = URL(string: UIApplication.openSettingsURLString) else {
-                    return
-                }
+                guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
                 UIApplication.shared.open(url)
             }
             .buttonStyle(.borderedProminent)
         }
         .padding()
     }
+
+    // MARK: - AR overlay
 
     private var overlayView: some View {
         GeometryReader { geometry in
@@ -66,27 +71,73 @@ struct ContentView: View {
                     overlayCard(for: track, in: geometry.size)
                         .transition(.opacity.combined(with: .scale(scale: 0.96)))
                         .ignoresSafeArea()
-
                 }
 
+                // Top-left: status pill
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("RaceVisionAR")
-                        .font(.headline)
+                    HStack(spacing: 6) {
+                        Text(appModel.selectedRace?.displayName ?? "RaceVisionAR")
+                            .font(.headline)
+
+                        if isTestRace {
+                            Text("TEST")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.orange)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(.orange.opacity(0.2), in: Capsule())
+                        } else if appModel.isLoadingRunners {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                                .tint(.secondary)
+                        } else if appModel.isOffline {
+                            Image(systemName: "wifi.slash")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                    Text(appModel.debugStatus)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(10)
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                 .padding(.top, 12)
                 .padding(.leading, 12)
+
+                // Top-right: change race + sign out
+                HStack(spacing: 8) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "flag.checkered")
+                            .padding(10)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    }
+
+                    Button {
+                        try? authService.signOut()
+                    } label: {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .padding(10)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                }
+                .padding(.top, 12)
+                .padding(.trailing, 12)
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .animation(.easeInOut(duration: 0.25), value: appModel.trackedOverlays)
         }
     }
 
+    // MARK: - Runner overlay card
+
     @ViewBuilder
     private func overlayCard(for track: TrackedRunnerOverlay, in viewSize: CGSize) -> some View {
         let rect = track.overlayRect
-        let accentColor: Color = track.runnerProfile == nil ? .yellow : .green
-        
+        let accentColor: Color = isTestRace ? .orange : (track.runnerProfile == nil ? .yellow : .green)
+
         VStack(alignment: .leading, spacing: 3) {
             if let profile = track.runnerProfile {
                 Text(profile.name)
@@ -115,6 +166,11 @@ struct ContentView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            isTestRace
+                ? RoundedRectangle(cornerRadius: 8).stroke(Color.orange.opacity(0.5), lineWidth: 1)
+                : nil
+        )
         .foregroundStyle(.white)
         .opacity(track.overlayOpacity)
         .position(
@@ -131,4 +187,5 @@ struct ContentView: View {
 #Preview {
     ContentView()
         .environmentObject(AppModel())
+        .environmentObject(AuthService())
 }
