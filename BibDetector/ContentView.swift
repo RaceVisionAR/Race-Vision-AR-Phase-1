@@ -73,6 +73,11 @@ struct ContentView: View {
                         .ignoresSafeArea()
                 }
 
+                // Bottom-center: stabilizing indicator
+                if appModel.isProbingBibs && appModel.visibleTracks.isEmpty {
+                    scanningIndicator
+                }
+
                 // Top-left: status pill
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
@@ -179,8 +184,45 @@ struct ContentView: View {
         )
     }
 
+    // MARK: - Scanning indicator
+
+    /// Pulsing pill shown while a bib is being stabilized but no card has appeared yet.
+    private var scanningIndicator: some View {
+        ScanningPill()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            .padding(.bottom, 48)
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
+            .allowsHitTesting(false)
+    }
+
     private func clamp(_ value: CGFloat, min minimum: CGFloat, max maximum: CGFloat) -> CGFloat {
         Swift.max(minimum, Swift.min(maximum, value))
+    }
+}
+
+// MARK: - Scanning pill
+
+private struct ScanningPill: View {
+    @State private var pulsing = false
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Circle()
+                .fill(Color.green)
+                .frame(width: 7, height: 7)
+                .scaleEffect(pulsing ? 1.3 : 0.8)
+                .animation(
+                    .easeInOut(duration: 0.65).repeatForever(autoreverses: true),
+                    value: pulsing
+                )
+            Text("Scanning…")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 9)
+        .background(.black.opacity(0.72), in: Capsule())
+        .onAppear { pulsing = true }
     }
 }
 

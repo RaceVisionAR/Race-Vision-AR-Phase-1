@@ -14,6 +14,9 @@ actor BibOCRService {
         request.recognitionLanguages = ["en_US"]
         request.recognitionLevel = .fast
         request.usesLanguageCorrection = false
+        // Restrict OCR to the torso band (20%–85% from bottom in Vision coords).
+        // Skips ground, feet, and sky — where bib numbers never appear.
+        request.regionOfInterest = CGRect(x: 0.0, y: 0.20, width: 1.0, height: 0.65)
 
         do {
             let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .right)

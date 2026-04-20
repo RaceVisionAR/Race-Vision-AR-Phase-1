@@ -24,11 +24,16 @@ final class AppModel: ObservableObject {
 
     private let ocrInterval: TimeInterval = 0.2
     private let stabilizationWindow: TimeInterval = 0.8
-    private let visibleGracePeriod: TimeInterval = 1.0
+    private let visibleGracePeriod: TimeInterval = 1.8
     private let fadeOutDuration: TimeInterval = 0.35
     private let consistentDetectionsRequired: Int = 3
-    private let minimumTrackConfidence: Float = 0.35
+    private let minimumTrackConfidence: Float = 0.50
     private let maxTrackedCards: Int = 4
+
+    /// True when at least one bib is in the stabilization phase but not yet confirmed.
+    var isProbingBibs: Bool {
+        trackedOverlays.values.contains { $0.visibilityStatus == .probing }
+    }
 
     var visibleTracks: [TrackedRunnerOverlay] {
         trackedOverlays.values
