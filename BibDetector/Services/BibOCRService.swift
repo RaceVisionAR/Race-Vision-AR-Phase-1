@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import UIKit
 import Vision
 
 struct OCRBibResult {
@@ -9,7 +10,7 @@ struct OCRBibResult {
 }
 
 actor BibOCRService {
-    func detectBibs(in pixelBuffer: CVPixelBuffer) async -> [OCRBibResult] {
+    func detectBibs(in pixelBuffer: CVPixelBuffer, deviceOrientation: UIDeviceOrientation) async -> [OCRBibResult] {
         let request = VNRecognizeTextRequest()
         request.recognitionLanguages = ["en_US"]
         request.recognitionLevel = .fast
@@ -19,7 +20,8 @@ actor BibOCRService {
         request.regionOfInterest = CGRect(x: 0.0, y: 0.20, width: 1.0, height: 0.65)
 
         do {
-            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .right)
+            let orientation = cgImageOrientation(from: deviceOrientation)
+            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: orientation)
             try handler.perform([request])
 
             guard let observations = request.results else {
@@ -58,6 +60,24 @@ actor BibOCRService {
 
         return resultsByBib.values.sorted { lhs, rhs in
             lhs.confidence > rhs.confidence
+        }
+    }
+
+    private func cgImageOrientation(from deviceOrientation: UIDeviceOrientation) -> CGImagePropertyOrientation {
+        switch deviceOrientation {
+        case .portrait:
+            return .right
+        case .portraitUpsideDown:
+            return .left
+        case .landscapeLeft:
+            return .up
+        case .landscapeRight:
+            return .down
+        case .faceUp, .faceDown, .unknown:
+            // Default to portrait when flat or unknown
+            return .right
+        @unknown default:
+            return .right
         }
     }
 }

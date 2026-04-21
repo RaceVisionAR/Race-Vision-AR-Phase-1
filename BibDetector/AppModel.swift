@@ -18,15 +18,12 @@ final class AppModel: ObservableObject {
     private let ocrService: BibOCRService
 
     private var isProcessingFrame = false
-    private var lastOCRTime = Date.distantPast
     private var recentStabilizedBibs: [String] = []
     private var cameraPortraitAspectRatio: CGFloat = 3.0 / 4.0
 
-    private let ocrInterval: TimeInterval = 0.2
     private let stabilizationWindow: TimeInterval = 0.8
     private let visibleGracePeriod: TimeInterval = 1.8
     private let fadeOutDuration: TimeInterval = 0.35
-    private let consistentDetectionsRequired: Int = 3
     private let minimumTrackConfidence: Float = 0.50
     private let maxTrackedCards: Int = 4
 
@@ -105,18 +102,15 @@ final class AppModel: ObservableObject {
         }
 
         guard cameraAuthorizationStatus == .authorized else { return }
-
-        let now = Date()
-        guard now.timeIntervalSince(lastOCRTime) >= ocrInterval else { return }
         guard !isProcessingFrame else { return }
 
         isProcessingFrame = true
-        lastOCRTime = now
         let pixelBuffer = frame.capturedImage
+        let deviceOrientation = UIDevice.current.orientation
 
         Task { @MainActor in
             defer { isProcessingFrame = false }
-            let detected = await ocrService.detectBibs(in: pixelBuffer)
+            let detected = await ocrService.detectBibs(in: pixelBuffer, deviceOrientation: deviceOrientation)
             ingestOCRResults(detected, viewSize: viewSize, now: Date())
         }
     }
@@ -157,15 +151,6 @@ final class AppModel: ObservableObject {
                 now.timeIntervalSince($0.timestamp) <= stabilizationWindow
             }
 
-            let justStabilized = !track.hasMetVisibilityThreshold &&
-                track.recentDetections.count >= consistentDetectionsRequired
-
-            if justStabilized {
-                track.hasMetVisibilityThreshold = true
-                track.runnerProfile = repository.matchRunner(bibNumber: track.bibNumber)
-                registerStabilizedBib(track.bibNumber)
-            }
-
             if track.hasMetVisibilityThreshold {
                 track.visibilityStatus = .visible
             }
@@ -174,17 +159,22 @@ final class AppModel: ObservableObject {
             return
         }
 
+        // Single detection triggers overlay immediately
+        let runnerProfile = repository.matchRunner(bibNumber: result.bibNumber)
+        
         trackedOverlays[result.bibNumber] = TrackedRunnerOverlay(
             bibNumber: result.bibNumber,
-            runnerProfile: nil,
+            runnerProfile: runnerProfile,
             latestDetection: detection,
             overlayRect: overlayRect,
-            visibilityStatus: .probing,
+            visibilityStatus: .visible,
             recentDetections: [detection],
             firstSeenAt: now,
             lastSeenAt: now,
-            hasMetVisibilityThreshold: false
+            hasMetVisibilityThreshold: true
         )
+        
+        registerStabilizedBib(result.bibNumber)
     }
 
     private func refreshTrackLifecycle(viewSize: CGSize, now: Date, detectedBibs: Set<String> = []) {
