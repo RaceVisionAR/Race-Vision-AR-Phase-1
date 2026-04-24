@@ -1,5 +1,3 @@
-# Sensitive/Credentials Files
-GoogleService-Info.plist
 # Xcode User Data & Preferences
 xcuserdata/
 *.xcuserdatad/
