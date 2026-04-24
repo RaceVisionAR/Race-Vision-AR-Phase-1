@@ -12,6 +12,7 @@ final class AuthService: ObservableObject {
     @Published var user: FirebaseAuth.User?
     @Published var authError: Error?
     @Published var isAdmin = false
+    @Published var isLoadingRole = false
 
     var isSignedIn: Bool { user != nil }
 
@@ -35,8 +36,10 @@ final class AuthService: ObservableObject {
     }
 
     private func fetchUserRole(uid: String) async {
+        isLoadingRole = true
         let doc = try? await Firestore.firestore().collection("users").document(uid).getDocument()
         isAdmin = doc?.data()?["role"] as? String == "admin"
+        isLoadingRole = false
     }
 
     // Called by SignInWithAppleButton request closure — stores nonce and returns sha256 hash.

@@ -48,6 +48,17 @@ final class AppModel: ObservableObject {
         self.ocrService = ocrService
     }
 
+    /// Clears all race and scan state — called on sign-out so a new user starts fresh.
+    func reset() {
+        selectedRace = nil
+        trackedOverlays = [:]
+        recentStabilizedBibs = []
+        isLoadingRunners = false
+        isOffline = false
+        debugStatus = "Initializing"
+        repository = RunnerRepository(raceId: "preview")
+    }
+
     /// Called by RaceSelectionView when a race is tapped. Resets all scan state
     /// and replaces the repository so the next start() loads the correct bibs.
     func selectRace(_ race: Race) {

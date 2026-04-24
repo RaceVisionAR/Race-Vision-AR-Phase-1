@@ -66,8 +66,13 @@ struct RaceSelectionView: View {
                             .frame(width: 38, height: 38)
                             .background(Color(white: 0.18), in: Circle())
                     }
+                } else if authService.isLoadingRole {
+                    ProgressView()
+                        .tint(.white)
+                        .frame(width: 38, height: 38)
                 }
                 Button {
+                    appModel.reset()
                     try? authService.signOut()
                 } label: {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
@@ -99,6 +104,40 @@ struct RaceSelectionView: View {
             .padding(.bottom, 40)
         }
         .refreshable { await raceService.fetchRaces() }
+        .overlay {
+            if raceService.races.isEmpty {
+                emptyRaceState
+            }
+        }
+    }
+
+    private var emptyRaceState: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "flag.slash")
+                .font(.system(size: 40))
+                .foregroundStyle(.white.opacity(0.25))
+            Text("No races available")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.6))
+            Text(authService.isAdmin
+                 ? "Upload a CSV to add runners and create a race."
+                 : "Check back soon or contact your race admin.")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.35))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+            if authService.isAdmin {
+                Button { showAdminUpload = true } label: {
+                    Label("Upload Runners", systemImage: "arrow.up.doc")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(.green, in: Capsule())
+                }
+                .padding(.top, 4)
+            }
+        }
     }
 
     // MARK: - Error

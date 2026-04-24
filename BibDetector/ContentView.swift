@@ -121,6 +121,7 @@ struct ContentView: View {
                     }
 
                     Button {
+                        appModel.reset()
                         try? authService.signOut()
                     } label: {
                         Image(systemName: "rectangle.portrait.and.arrow.right")
