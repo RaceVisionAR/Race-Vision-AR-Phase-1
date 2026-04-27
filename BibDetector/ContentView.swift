@@ -14,6 +14,9 @@ struct ContentView: View {
     @EnvironmentObject private var authService: AuthService
     @Environment(\.dismiss) private var dismiss
 
+    /// Tracks each card's rendered size keyed by bib number, used for edge clamping.
+    @State private var cardSizes: [String: CGSize] = [:]
+
     private var isTestRace: Bool { appModel.selectedRace?.isTestRace ?? false }
 
     var body: some View {
@@ -134,6 +137,7 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .animation(.easeInOut(duration: 0.25), value: appModel.trackedOverlays)
+            .onPreferenceChange(CardSizeKey.self) { cardSizes = $0 }
         }
     }
 
@@ -179,10 +183,7 @@ struct ContentView: View {
         )
         .foregroundStyle(.white)
         .opacity(track.overlayOpacity)
-        .position(
-            x: clamp(rect.midX, min: 88, max: viewSize.width - 88),
-            y: max(24, rect.minY - 50)
-        )
+        .modifier(ClampedPositionModifier(rect: rect, viewSize: viewSize, trackID: track.id))
     }
 
     // MARK: - Scanning indicator
@@ -194,10 +195,6 @@ struct ContentView: View {
             .padding(.bottom, 48)
             .transition(.opacity.combined(with: .move(edge: .bottom)))
             .allowsHitTesting(false)
-    }
-
-    private func clamp(_ value: CGFloat, min minimum: CGFloat, max maximum: CGFloat) -> CGFloat {
-        Swift.max(minimum, Swift.min(maximum, value))
     }
 }
 
@@ -224,6 +221,65 @@ private struct ScanningPill: View {
         .padding(.vertical, 9)
         .background(.black.opacity(0.72), in: Capsule())
         .onAppear { pulsing = true }
+    }
+}
+
+// MARK: - Card size preference key
+
+/// Collects each overlay card's rendered CGSize keyed by bib number.
+private struct CardSizeKey: PreferenceKey {
+    static let defaultValue: [String: CGSize] = [:]
+    static func reduce(value: inout [String: CGSize], nextValue: () -> [String: CGSize]) {
+        value.merge(nextValue()) { $1 }
+    }
+}
+
+// MARK: - Clamped position modifier
+
+/// Positions an overlay card above the detected bib rect, clamping to the view
+/// bounds using the card's actual rendered size so it never clips at the edges.
+private struct ClampedPositionModifier: ViewModifier {
+    let rect: CGRect
+    let viewSize: CGSize
+    let trackID: String
+
+    @State private var cardSize: CGSize = CGSize(width: 160, height: 60)
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(
+                        key: CardSizeKey.self,
+                        value: [trackID: geo.size]
+                    )
+                }
+            )
+            .onPreferenceChange(CardSizeKey.self) { sizes in
+                if let s = sizes[trackID] { cardSize = s }
+            }
+            .position(
+                x: clampedX,
+                y: clampedY
+            )
+    }
+
+    private var halfW: CGFloat { cardSize.width / 2 }
+    private var halfH: CGFloat { cardSize.height / 2 }
+    private let edgePadding: CGFloat = 8
+
+    private var clampedX: CGFloat {
+        let ideal = rect.midX
+        let lo = halfW + edgePadding
+        let hi = viewSize.width - halfW - edgePadding
+        return min(max(ideal, lo), hi)
+    }
+
+    private var clampedY: CGFloat {
+        let ideal = rect.minY - halfH - 8   // 8 pt gap above the bib
+        let lo = halfH + edgePadding
+        let hi = viewSize.height - halfH - edgePadding
+        return min(max(ideal, lo), hi)
     }
 }
 

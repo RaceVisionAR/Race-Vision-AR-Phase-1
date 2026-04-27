@@ -18,8 +18,13 @@ final class AppModel: ObservableObject {
     private let ocrService: BibOCRService
 
     private var isProcessingFrame = false
+    private var lastOCRTime: Date = .distantPast
     private var recentStabilizedBibs: [String] = []
     private var cameraPortraitAspectRatio: CGFloat = 3.0 / 4.0
+
+    /// Minimum interval between OCR passes. Keeps CPU/battery in check while
+    /// still feeling responsive (~8 passes/sec).
+    private let ocrInterval: TimeInterval = 0.12
 
     private let stabilizationWindow: TimeInterval = 0.8
     private let visibleGracePeriod: TimeInterval = 1.8
@@ -57,6 +62,7 @@ final class AppModel: ObservableObject {
         isOffline = false
         debugStatus = "Initializing"
         repository = RunnerRepository(raceId: "preview")
+        lastOCRTime = .distantPast
     }
 
     /// Called by RaceSelectionView when a race is tapped. Resets all scan state
@@ -115,7 +121,11 @@ final class AppModel: ObservableObject {
         guard cameraAuthorizationStatus == .authorized else { return }
         guard !isProcessingFrame else { return }
 
+        let now = Date()
+        guard now.timeIntervalSince(lastOCRTime) >= ocrInterval else { return }
+
         isProcessingFrame = true
+        lastOCRTime = now
         let pixelBuffer = frame.capturedImage
         let deviceOrientation = UIDevice.current.orientation
 
